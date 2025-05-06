@@ -1,6 +1,9 @@
 using System.Text.Json.Serialization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Cvars;
+using Microsoft.Extensions.Logging;
 
 namespace ServerGraphic;
 
@@ -15,25 +18,58 @@ public class ServerGraphic : BasePlugin, IPluginConfig<ServerGraphicConfig>
     public override string ModuleName => "ServerGraphic";
     public override string ModuleVersion => "1.0.2";
     public override string ModuleAuthor => "unfortunate";
+    public int iMpFreezeTimemp;
+    public bool bShowingServerGraphic = false;
 
     public ServerGraphicConfig Config { get; set; } = new();
 
+    public override void Load(bool hotReload)
+    {
+        Console.WriteLine("[INFO] [CS2ServerGraphice] Loading +++ ");
+        RegisterListener<Listeners.OnMapStart>(OnMapStartHandler);
+        if (hotReload)
+        {
+            Console.WriteLine("[INFO] [CS2ServerGraphic] hotReload +++ ");
+            Console.WriteLine("[INFO] [CS2ServerGraphic] hotReload --- ");
+        }
+
+        Console.WriteLine("[INFO] [CS2ServerGraphic] Loading --- ");
+    }
     public void OnConfigParsed(ServerGraphicConfig config)
     {
         Config = config;
         RegisterListener<Listeners.OnTick>(() =>
         {
-            foreach (var player in Utilities.GetPlayers())
-            {
-                if (!IsPlayerValid(player))
-                    continue;
+            if (bShowingServerGraphic) {
+                foreach (var player in Utilities.GetPlayers())
+                {
+                    if (!IsPlayerValid(player))
+                        continue;
 
-                if (player.PawnIsAlive)
-                    continue;
 
-                player.PrintToCenterHtml($"<img src='{Config.Image}'>");
+                    player.PrintToCenterHtml($"<img src='{Config.Image}'>");
+                }
             }
         });
+    }
+
+    private void OnMapStartHandler(string mapName)
+    {
+        bShowingServerGraphic = false;
+    }
+
+    [GameEventHandler]
+    public HookResult OnEventRoundStart(EventRoundStart @event, GameEventInfo info)
+    {
+        iMpFreezeTimemp = ConVar.Find("mp_freezetime")!.GetPrimitiveValue<int>();
+        Logger.LogInformation("[OnEventRoundStart] Round has started with iMpFreezeTimemp: {iMpFreezeTimemp}", iMpFreezeTimemp);
+        bShowingServerGraphic = true;
+        AddTimer(iMpFreezeTimemp, () =>
+        {
+            bShowingServerGraphic = false;
+            Logger.LogInformation("[OnEventRoundStart] mp_freezetime ended");
+        });
+        return HookResult.Continue;
     }
 
     #region Helpers

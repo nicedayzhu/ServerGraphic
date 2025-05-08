@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Cvars;
 using Microsoft.Extensions.Logging;
+using HttpUtils;
 
 namespace ServerGraphic;
 
@@ -56,6 +57,26 @@ public class ServerGraphic : BasePlugin, IPluginConfig<ServerGraphicConfig>
     private void OnMapStartHandler(string mapName)
     {
         bShowingServerGraphic = false;
+    }
+
+    public void GetServerGraphicUrl()
+    {
+        Task.Run(async () =>
+        {
+            try
+            {
+                string? response = await Utils.HttpGetAsync("modalFeedbackEvent");
+                if (response != null)
+                {
+                    // 处理响应（注意线程安全）
+                    Logger.LogInformation(response);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"后台请求失败: {ex.Message}");
+            }
+        });
     }
 
     [GameEventHandler]
